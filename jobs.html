@@ -89,6 +89,8 @@ tr.applied-row:hover{background:#dcfce7 !important}
 .cb-applied{width:16px;height:16px;accent-color:#16a34a;cursor:pointer}
 .btn-del{background:none;border:1px solid #e5e7eb;border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#94a3b8;font-size:.85rem;transition:all .15s}
 .btn-del:hover{border-color:#ef4444;color:#ef4444;background:#fef2f2}
+.btn-review{background:none;border:1px solid #bfdbfe;border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#2563eb;font-size:.85rem;transition:all .15s;text-decoration:none}
+.btn-review:hover{border-color:#2563eb;background:#eff6ff}
 .applied-date{font-size:.7rem;color:#16a34a;font-weight:600}
 .job-link{color:#2563eb;text-decoration:none;font-weight:500}
 .job-link:hover{text-decoration:underline}
@@ -403,9 +405,11 @@ tr.applied-row:hover{background:#dcfce7 !important}
 
       // Actions
       var td9=document.createElement('td');
+      var reviewUrl='resume-reviewer.html?job_title='+encodeURIComponent(j['Job Title']||'')+'&company='+encodeURIComponent(j['Company']||'')+'&job_url='+encodeURIComponent(j['Direct URL']||'')+'&category='+encodeURIComponent(j['Category']||'');
       td9.innerHTML='<div class="actions">'+
         '<input type="checkbox" class="cb-applied" '+(isApplied?'checked':'')+' title="Mark as Applied">'+
         (!isApplied?'<input type="date" class="date-input" style="display:none">':'')+
+        '<a href="'+esc(reviewUrl)+'" target="_blank" rel="noopener" class="btn-review" title="Review Resume for this job">&#128196;</a>'+
         '<button class="btn-del" title="Delete">&#10005;</button>'+
         '</div>';
       tr.appendChild(td9);

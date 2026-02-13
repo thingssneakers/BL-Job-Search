@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resume Reviewer - BL Job Search</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f2f5;color:#1e293b;line-height:1.6;min-height:100vh}
+
+/* ===== LOGIN ===== */
+.login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 50%,#3b82f6 100%)}
+.login-box{background:#fff;border-radius:16px;padding:48px 40px;box-shadow:0 20px 60px rgba(0,0,0,.2);text-align:center;width:100%;max-width:380px;margin:20px}
+.login-box h1{font-size:1.6rem;font-weight:700;color:#1e293b;margin-bottom:6px}
+.login-box p{color:#64748b;font-size:.875rem;margin-bottom:28px}
+.login-box .logo-icon{font-size:2.5rem;margin-bottom:12px;display:block}
+.login-input{width:100%;padding:12px 16px;border:2px solid #e2e8f0;border-radius:8px;font-size:.95rem;outline:none;transition:border-color .2s;margin-bottom:16px}
+.login-input:focus{border-color:#2563eb}
+.login-btn{width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer;transition:background .2s}
+.login-btn:hover{background:#1d4ed8}
+.login-error{color:#dc2626;font-size:.8rem;margin-top:8px;min-height:20px}
+
+/* ===== APP ===== */
+.app{display:none}
+.app.visible{display:block}
+
+/* Header */
+.header{background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%);color:#fff;padding:20px 0;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.15)}
+.header-inner{max-width:1200px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.header h1{font-size:1.25rem;font-weight:700;display:flex;align-items:center;gap:8px}
+.header-actions{display:flex;gap:8px;align-items:center}
+.btn-back,.btn-logout{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.25);padding:6px 14px;border-radius:6px;font-size:.75rem;cursor:pointer;transition:background .2s;text-decoration:none}
+.btn-back:hover,.btn-logout:hover{background:rgba(255,255,255,.25)}
+
+/* Main Layout */
+.main{max-width:1200px;margin:24px auto;padding:0 24px;display:grid;grid-template-columns:1fr 1fr;gap:24px}
+@media(max-width:900px){.main{grid-template-columns:1fr}}
+
+/* Panels */
+.panel{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.06);padding:24px;margin-bottom:0}
+.panel h2{font-size:1.05rem;font-weight:700;margin-bottom:16px;color:#1e293b;display:flex;align-items:center;gap:8px}
+.panel h3{font-size:.9rem;font-weight:600;margin:16px 0 8px;color:#334155}
+
+/* Job Info */
+.job-info-card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-bottom:16px}
+.job-info-card .job-title{font-size:1rem;font-weight:700;color:#1e293b}
+.job-info-card .job-company{font-size:.85rem;color:#2563eb;font-weight:600}
+.job-info-card .job-meta{font-size:.78rem;color:#64748b;margin-top:4px}
+.job-info-card a{color:#2563eb;font-size:.8rem}
+
+/* Form Elements */
+label{display:block;font-size:.8rem;font-weight:600;color:#475569;margin-bottom:6px}
+select,textarea,input[type="file"]{width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:.85rem;outline:none;transition:border-color .2s;font-family:inherit}
+select:focus,textarea:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+textarea{resize:vertical;min-height:120px}
+
+.file-upload{border:2px dashed #d1d5db;border-radius:8px;padding:24px;text-align:center;cursor:pointer;transition:all .2s;background:#fafbfc}
+.file-upload:hover{border-color:#2563eb;background:#eff6ff}
+.file-upload.has-file{border-color:#16a34a;background:#f0fdf4}
+.file-upload input{display:none}
+.file-upload .upload-icon{font-size:2rem;margin-bottom:8px;display:block}
+.file-upload .upload-text{font-size:.85rem;color:#64748b}
+.file-upload .file-name{font-size:.85rem;color:#16a34a;font-weight:600;margin-top:4px}
+
+/* Buttons */
+.btn-primary{background:#2563eb;color:#fff;border:none;padding:14px 28px;border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px;width:100%}
+.btn-primary:hover:not(:disabled){background:#1d4ed8;transform:translateY(-1px);box-shadow:0 4px 12px rgba(37,99,235,.3)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.btn-generate{background:#16a34a}
+.btn-generate:hover:not(:disabled){background:#15803d;box-shadow:0 4px 12px rgba(22,163,74,.3)}
+.btn-secondary{background:#fff;color:#475569;border:1px solid #d1d5db;padding:10px 20px;border-radius:8px;font-size:.85rem;font-weight:500;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.btn-secondary:hover{background:#f8fafc;border-color:#94a3b8}
+.btn-sm{padding:6px 14px;font-size:.78rem}
+
+/* Progress Bar */
+.progress-bar{display:none;align-items:center;gap:12px;margin:16px 0;padding:12px 16px;background:#eff6ff;border-radius:8px;border:1px solid #bfdbfe}
+.progress-bar.visible{display:flex}
+.spinner{width:20px;height:20px;border:3px solid #bfdbfe;border-top-color:#2563eb;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.progress-text{font-size:.85rem;color:#1e40af;font-weight:500}
+
+/* Suggestions Counter */
+.suggestions-counter{display:none;padding:12px 16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:16px;font-size:.85rem;font-weight:600;color:#166534}
+.suggestions-counter.visible{display:block}
+
+/* Suggestion Cards */
+.suggestion-section{margin-bottom:20px}
+.suggestion-section h3{font-size:.9rem;font-weight:700;color:#1e293b;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #e2e8f0}
+.suggestion-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-bottom:12px;transition:all .2s;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.suggestion-card.accepted{border-color:#16a34a;background:#f0fdf4}
+.suggestion-card.skipped{opacity:.5}
+.sug-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-bottom:6px}
+.sug-original{background:#f1f5f9;border-left:3px solid #94a3b8;padding:10px 14px;border-radius:0 6px 6px 0;font-size:.82rem;color:#475569;margin-bottom:10px;line-height:1.5}
+.sug-suggested{background:#dcfce7;border-left:3px solid #16a34a;padding:10px 14px;border-radius:0 6px 6px 0;font-size:.82rem;color:#166534;margin-bottom:10px;line-height:1.5}
+.sug-explanation{font-size:.78rem;color:#64748b;margin-bottom:12px;font-style:italic;padding-left:4px}
+.sug-actions{display:flex;gap:8px}
+.btn-accept{background:#16a34a;color:#fff;border:none;padding:6px 16px;border-radius:6px;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:4px}
+.btn-accept:hover{background:#15803d}
+.btn-accept.accepted{background:#bbf7d0;color:#166534}
+.btn-skip{background:#f1f5f9;color:#64748b;border:1px solid #d1d5db;padding:6px 16px;border-radius:6px;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-skip:hover{background:#e2e8f0}
+
+/* Results Container */
+.results-container{display:none}
+.results-container.visible{display:block}
+
+/* Download Section */
+.download-section{display:none;padding:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin-top:16px}
+.download-section.visible{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+
+/* History */
+.history-section{max-width:1200px;margin:0 auto 40px;padding:0 24px}
+.history-panel{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.06);padding:24px}
+.history-item{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px;font-size:.85rem}
+.history-item .hist-meta{color:#64748b;font-size:.78rem}
+.history-item .hist-actions{display:flex;gap:8px}
+
+/* Error */
+.error-msg{display:none;padding:12px 16px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;color:#dc2626;font-size:.85rem;margin:12px 0}
+.error-msg.visible{display:block}
+
+/* API Key */
+.api-key-section{margin-bottom:16px;padding:12px 16px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px}
+.api-key-section label{color:#92400e;margin-bottom:4px}
+.api-key-section input{width:100%;padding:8px 12px;border:1px solid #fde68a;border-radius:6px;font-size:.82rem;font-family:monospace}
+.api-key-section .hint{font-size:.72rem;color:#a16207;margin-top:4px}
+
+/* Full Width Section */
+.full-width{grid-column:1/-1}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <span class="logo-icon">&#128196;</span>
+    <h1>Resume Reviewer</h1>
+    <p>Enter password to access the resume reviewer</p>
+    <input type="password" class="login-input" id="loginInput" placeholder="Password" autocomplete="off">
+    <button class="login-btn" id="loginBtn">Login</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="app">
+  <div class="header">
+    <div class="header-inner">
+      <h1>&#128196; Resume Reviewer</h1>
+      <div class="header-actions">
+        <a href="jobs.html" class="btn-back">&#8592; Back to Dashboard</a>
+        <button class="btn-logout" id="logoutBtn">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- LEFT COLUMN -->
+    <div class="left-col">
+      <div class="panel">
+        <h2>&#127919; Job You're Applying For</h2>
+        <div id="jobInfoCard" class="job-info-card" style="display:none">
+          <div class="job-title" id="jobTitleDisplay"></div>
+          <div class="job-company" id="jobCompanyDisplay"></div>
+          <div class="job-meta" id="jobMetaDisplay"></div>
+          <a id="jobUrlLink" href="#" target="_blank" rel="noopener" style="display:none">View Job Posting &#8599;</a>
+        </div>
+        <div id="jobSelectSection">
+          <label for="jobSelect">Select a job from your dashboard:</label>
+          <select id="jobSelect">
+            <option value="">-- Select a job --</option>
+          </select>
+        </div>
+        <h3>Paste Full Job Description</h3>
+        <textarea id="jobDescInput" placeholder="Paste the full job description here for the most accurate analysis..." rows="8"></textarea>
+      </div>
+
+      <div class="panel">
+        <h2>&#128206; Upload Your Resume</h2>
+        <div class="file-upload" id="fileUpload">
+          <input type="file" id="resumeFile" accept=".pdf,.docx">
+          <span class="upload-icon">&#128196;</span>
+          <div class="upload-text">Click to upload your resume (.pdf or .docx)</div>
+          <div class="file-name" id="fileName" style="display:none"></div>
+        </div>
+        <div class="error-msg" id="uploadError"></div>
+        <h3>Your Resume Text</h3>
+        <textarea id="resumeText" placeholder="Resume text will appear here after upload, or paste it manually..." rows="12"></textarea>
+      </div>
+
+      <div class="panel">
+        <h2>&#128272; Claude API Key</h2>
+        <div class="api-key-section">
+          <label for="apiKeyInput">Your Anthropic API Key</label>
+          <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-...">
+          <div class="hint">Your key is stored locally and never sent anywhere except the Anthropic API. You can get one at console.anthropic.com</div>
+        </div>
+      </div>
+
+      <button class="btn-primary" id="analyzeBtn" disabled>
+        <span>&#9889;</span> Analyze Resume Against Job
+      </button>
+      <div class="progress-bar" id="progressBar">
+        <div class="spinner"></div>
+        <span class="progress-text" id="progressText">Analyzing your resume...</span>
+      </div>
+      <div class="error-msg" id="analysisError"></div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="right-col">
+      <div class="suggestions-counter" id="suggestionsCounter"></div>
+      <div class="results-container" id="resultsContainer">
+        <div class="panel">
+          <h2>&#128161; Suggested Improvements</h2>
+          <div id="suggestionsBody"></div>
+        </div>
+
+        <div class="download-section" id="downloadSection">
+          <button class="btn-primary btn-generate" id="generateBtn">
+            <span>&#128190;</span> Generate Updated Resume
+          </button>
+          <button class="btn-secondary" id="downloadTxt">
+            <span>&#128196;</span> Download as .txt
+          </button>
+          <button class="btn-secondary" id="copyBtn">
+            <span>&#128203;</span> Copy to Clipboard
+          </button>
+        </div>
+      </div>
+
+      <div class="panel" id="emptyState">
+        <div style="text-align:center;padding:40px 20px;color:#94a3b8">
+          <div style="font-size:3rem;margin-bottom:12px">&#128270;</div>
+          <p style="font-size:.95rem;font-weight:500">Analysis results will appear here</p>
+          <p style="font-size:.82rem;margin-top:8px">Upload your resume, select a job, and click "Analyze" to get started</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- FULL WIDTH: History -->
+    <div class="full-width">
+      <div class="panel">
+        <h2>&#128218; Resume History</h2>
+        <div id="historyBody">
+          <div style="text-align:center;padding:24px;color:#94a3b8;font-size:.85rem">No tailored resumes yet. Analyze and generate your first one!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  /* ===== AUTH ===== */
+  var PWD='925summit', LS_AUTH='bl_auth';
+  function isAuthed(){ return localStorage.getItem(LS_AUTH)==='1'; }
+  function showApp(){ document.getElementById('loginScreen').style.display='none'; var a=document.getElementById('app'); a.style.display='block'; a.classList.add('visible'); init(); }
+  function showLogin(){ document.getElementById('loginScreen').style.display='flex'; document.getElementById('app').style.display='none'; }
+
+  document.getElementById('loginBtn').addEventListener('click', tryLogin);
+  document.getElementById('loginInput').addEventListener('keydown', function(e){ if(e.key==='Enter') tryLogin(); });
+  function tryLogin(){
+    var v=document.getElementById('loginInput').value;
+    if(v===PWD){ localStorage.setItem(LS_AUTH,'1'); showApp(); }
+    else{ document.getElementById('loginError').textContent='Incorrect password'; }
+  }
+  document.getElementById('logoutBtn').addEventListener('click', function(){ localStorage.removeItem(LS_AUTH); showLogin(); });
+  if(isAuthed()) showApp(); else showLogin();
+
+  /* ===== STATE ===== */
+  var allJobs = [];
+  var currentSuggestions = [];
+  var acceptedMap = {};
+  var totalSuggestions = 0;
+
+  /* ===== INIT ===== */
+  function init(){
+    loadApiKey();
+    loadJobs();
+    checkUrlParams();
+    renderHistory();
+    setupListeners();
+  }
+
+  function loadApiKey(){
+    var saved = localStorage.getItem('bl_anthropic_key');
+    if(saved) document.getElementById('apiKeyInput').value = saved;
+  }
+
+  function loadJobs(){
+    fetch('jobs.json').then(function(r){return r.json();}).then(function(data){
+      allJobs = Array.isArray(data) ? data : [];
+      populateJobSelect();
+    }).catch(function(){
+      allJobs = [];
+    });
+  }
+
+  function populateJobSelect(){
+    var sel = document.getElementById('jobSelect');
+    allJobs.forEach(function(j, i){
+      var opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = j['Job Title'] + ' - ' + j['Company'];
+      sel.appendChild(opt);
+    });
+  }
+
+  function checkUrlParams(){
+    var params = new URLSearchParams(window.location.search);
+    var title = params.get('job_title');
+    var company = params.get('company');
+    var url = params.get('job_url');
+    var category = params.get('category');
+
+    if(title && company){
+      showJobInfo(title, company, category || '', url || '');
+      // Try to match in select
+      for(var i=0; i<allJobs.length; i++){
+        if(allJobs[i]['Job Title']===title && allJobs[i]['Company']===company){
+          document.getElementById('jobSelect').value = i;
+          break;
+        }
+      }
+    }
+  }
+
+  function showJobInfo(title, company, category, url){
+    document.getElementById('jobInfoCard').style.display='block';
+    document.getElementById('jobTitleDisplay').textContent = title;
+    document.getElementById('jobCompanyDisplay').textContent = company;
+    document.getElementById('jobMetaDisplay').textContent = category;
+    if(url && url !== 'N/A' && url !== 'Not Listed'){
+      var link = document.getElementById('jobUrlLink');
+      link.href = url;
+      link.style.display = 'inline';
+    }
+  }
+
+  function setupListeners(){
+    // Job select
+    document.getElementById('jobSelect').addEventListener('change', function(){
+      var idx = parseInt(this.value);
+      if(!isNaN(idx) && allJobs[idx]){
+        var j = allJobs[idx];
+        showJobInfo(j['Job Title'], j['Company'], j['Category']||'', j['Direct URL']||'');
+      }
+    });
+
+    // File upload
+    var fileUpload = document.getElementById('fileUpload');
+    var fileInput = document.getElementById('resumeFile');
+    fileUpload.addEventListener('click', function(){ fileInput.click(); });
+    fileInput.addEventListener('change', handleFileUpload);
+
+    // Drag and drop
+    fileUpload.addEventListener('dragover', function(e){ e.preventDefault(); fileUpload.style.borderColor='#2563eb'; });
+    fileUpload.addEventListener('dragleave', function(){ fileUpload.style.borderColor='#d1d5db'; });
+    fileUpload.addEventListener('drop', function(e){
+      e.preventDefault();
+      fileUpload.style.borderColor='#d1d5db';
+      if(e.dataTransfer.files.length){ fileInput.files = e.dataTransfer.files; handleFileUpload(); }
+    });
+
+    // Enable analyze button when fields are filled
+    document.getElementById('resumeText').addEventListener('input', checkReady);
+    document.getElementById('jobDescInput').addEventListener('input', checkReady);
+    document.getElementById('apiKeyInput').addEventListener('input', function(){
+      localStorage.setItem('bl_anthropic_key', this.value);
+      checkReady();
+    });
+    document.getElementById('jobSelect').addEventListener('change', checkReady);
+
+    // Analyze button
+    document.getElementById('analyzeBtn').addEventListener('click', runAnalysis);
+
+    // Generate button
+    document.getElementById('generateBtn').addEventListener('click', generateResume);
+
+    // Download txt
+    document.getElementById('downloadTxt').addEventListener('click', downloadTxt);
+
+    // Copy
+    document.getElementById('copyBtn').addEventListener('click', copyToClipboard);
+  }
+
+  function checkReady(){
+    var hasResume = document.getElementById('resumeText').value.trim().length > 50;
+    var hasJob = document.getElementById('jobDescInput').value.trim().length > 20 ||
+                 document.getElementById('jobSelect').value !== '';
+    var hasKey = document.getElementById('apiKeyInput').value.trim().length > 10;
+    document.getElementById('analyzeBtn').disabled = !(hasResume && hasJob && hasKey);
+  }
+
+  /* ===== FILE HANDLING ===== */
+  function handleFileUpload(){
+    var file = document.getElementById('resumeFile').files[0];
+    if(!file) return;
+
+    var ext = file.name.split('.').pop().toLowerCase();
+    var errorEl = document.getElementById('uploadError');
+    errorEl.classList.remove('visible');
+
+    if(ext !== 'pdf' && ext !== 'docx'){
+      errorEl.textContent = 'Unsupported file format. Please upload a .pdf or .docx file.';
+      errorEl.classList.add('visible');
+      return;
+    }
+
+    // Show file name
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileName').style.display = 'block';
+    document.getElementById('fileUpload').classList.add('has-file');
+
+    if(ext === 'pdf') extractPDF(file);
+    else if(ext === 'docx') extractDOCX(file);
+  }
+
+  function extractPDF(file){
+    var reader = new FileReader();
+    reader.onload = function(){
+      var typedArray = new Uint8Array(this.result);
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      pdfjsLib.getDocument(typedArray).promise.then(function(pdf){
+        var text = '';
+        var pages = [];
+        for(var i=1; i<=pdf.numPages; i++) pages.push(i);
+
+        function getPage(idx){
+          if(idx >= pages.length){
+            document.getElementById('resumeText').value = text.trim();
+            checkReady();
+            return;
+          }
+          pdf.getPage(pages[idx]).then(function(page){
+            page.getTextContent().then(function(content){
+              content.items.forEach(function(item){ text += item.str + ' '; });
+              text += '\n';
+              getPage(idx+1);
+            });
+          });
+        }
+        getPage(0);
+      }).catch(function(err){
+        var errorEl = document.getElementById('uploadError');
+        errorEl.textContent = 'Failed to read PDF: ' + err.message;
+        errorEl.classList.add('visible');
+      });
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function extractDOCX(file){
+    var reader = new FileReader();
+    reader.onload = function(){
+      mammoth.extractRawText({arrayBuffer: this.result}).then(function(result){
+        document.getElementById('resumeText').value = result.value.trim();
+        checkReady();
+      }).catch(function(err){
+        var errorEl = document.getElementById('uploadError');
+        errorEl.textContent = 'Failed to read DOCX: ' + err.message;
+        errorEl.classList.add('visible');
+      });
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  /* ===== AI ANALYSIS ===== */
+  function runAnalysis(){
+    var apiKey = document.getElementById('apiKeyInput').value.trim();
+    var resumeText = document.getElementById('resumeText').value.trim();
+    var jobDesc = document.getElementById('jobDescInput').value.trim();
+
+    // Build job context from selected job + pasted description
+    var jobContext = '';
+    var selIdx = parseInt(document.getElementById('jobSelect').value);
+    if(!isNaN(selIdx) && allJobs[selIdx]){
+      var j = allJobs[selIdx];
+      jobContext += 'Job Title: ' + j['Job Title'] + '\n';
+      jobContext += 'Company: ' + j['Company'] + '\n';
+      jobContext += 'Category: ' + (j['Category']||'') + '\n';
+      jobContext += 'Location: ' + (j['Location']||'') + '\n\n';
+    }
+    if(jobDesc) jobContext += 'Full Job Description:\n' + jobDesc;
+
+    if(!jobContext.trim()){
+      showError('analysisError', 'Please select a job or paste a job description.');
+      return;
+    }
+
+    // Show loading
+    document.getElementById('analyzeBtn').disabled = true;
+    var progressBar = document.getElementById('progressBar');
+    progressBar.classList.add('visible');
+    document.getElementById('progressText').textContent = 'Analyzing your resume...';
+    hideError('analysisError');
+
+    var stillAnalyzing = setTimeout(function(){
+      document.getElementById('progressText').textContent = 'Still analyzing... This may take a moment.';
+    }, 10000);
+
+    var systemPrompt = 'You are a resume optimization expert. Analyze the provided resume against the job description and suggest specific, truthful improvements. Follow these rules strictly:\n\n' +
+      'ONLY suggest changes that reframe existing experience - never add skills or experience the candidate doesn\'t have\n' +
+      'Focus on: keyword alignment, quantifying achievements, using employer\'s terminology, highlighting relevant aspects\n' +
+      'Organize suggestions by resume section (Summary, Skills, Work Experience by job, Education, Certifications)\n' +
+      'For each suggestion provide: original text, suggested revision, and one sentence explaining why it helps for THIS specific job\n' +
+      'Prioritize subtle improvements that increase keyword matches and relevance\n' +
+      'If quantification is possible (e.g., "photographed many properties" to "documented 500+ properties"), suggest it\n' +
+      'Reframe generic terms with role-specific terminology from the JD (e.g., "took drone photos" to "conducted UAV-based aerial surveys")\n' +
+      'Maximum 12 suggestions total - focus on highest impact changes\n' +
+      'Return results as structured JSON with this format:\n' +
+      '{"sections": [{"section_name": "Summary", "suggestions": [{"original": "...", "suggested": "...", "explanation": "..."}]}]}';
+
+    var userMessage = 'Here is the job I am applying for:\n\n' + jobContext + '\n\n---\n\nHere is my current resume:\n\n' + resumeText + '\n\nPlease analyze my resume against this job and return your suggestions as the specified JSON format. Return ONLY the JSON, no other text.';
+
+    fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5-20250929',
+        max_tokens: 4000,
+        system: systemPrompt,
+        messages: [{role:'user', content: userMessage}]
+      })
+    })
+    .then(function(r){
+      if(!r.ok) return r.json().then(function(e){ throw new Error(e.error?.message || 'API error: ' + r.status); });
+      return r.json();
+    })
+    .then(function(data){
+      clearTimeout(stillAnalyzing);
+      progressBar.classList.remove('visible');
+      document.getElementById('analyzeBtn').disabled = false;
+
+      var text = data.content[0].text;
+      // Extract JSON from response (handle markdown code blocks)
+      var jsonMatch = text.match(/\{[\s\S]*\}/);
+      if(!jsonMatch) throw new Error('Could not parse AI response');
+
+      var result = JSON.parse(jsonMatch[0]);
+      displaySuggestions(result);
+    })
+    .catch(function(err){
+      clearTimeout(stillAnalyzing);
+      progressBar.classList.remove('visible');
+      document.getElementById('analyzeBtn').disabled = false;
+      showError('analysisError', 'Analysis failed: ' + err.message + '. Please check your API key and try again.');
+    });
+  }
+
+  /* ===== DISPLAY SUGGESTIONS ===== */
+  function displaySuggestions(result){
+    var body = document.getElementById('suggestionsBody');
+    body.innerHTML = '';
+    currentSuggestions = [];
+    acceptedMap = {};
+    totalSuggestions = 0;
+
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('resultsContainer').classList.add('visible');
+
+    var sections = result.sections || [];
+    var sugIdx = 0;
+
+    sections.forEach(function(section){
+      var secDiv = document.createElement('div');
+      secDiv.className = 'suggestion-section';
+
+      var h3 = document.createElement('h3');
+      h3.textContent = section.section_name;
+      secDiv.appendChild(h3);
+
+      (section.suggestions || []).forEach(function(sug){
+        var id = 'sug-' + sugIdx;
+        currentSuggestions.push({id:id, section:section.section_name, original:sug.original, suggested:sug.suggested, explanation:sug.explanation});
+        totalSuggestions++;
+
+        var card = document.createElement('div');
+        card.className = 'suggestion-card';
+        card.id = id;
+
+        card.innerHTML =
+          '<div class="sug-label" style="color:#94a3b8">ORIGINAL</div>' +
+          '<div class="sug-original">' + esc(sug.original) + '</div>' +
+          '<div class="sug-label" style="color:#16a34a">SUGGESTED</div>' +
+          '<div class="sug-suggested">' + esc(sug.suggested) + '</div>' +
+          '<div class="sug-explanation">Why this helps: ' + esc(sug.explanation) + '</div>' +
+          '<div class="sug-actions">' +
+            '<button class="btn-accept" data-id="'+id+'">&#10003; Accept</button>' +
+            '<button class="btn-skip" data-id="'+id+'">Skip</button>' +
+          '</div>';
+
+        secDiv.appendChild(card);
+        sugIdx++;
+      });
+
+      body.appendChild(secDiv);
+    });
+
+    // Bind accept/skip buttons
+    body.querySelectorAll('.btn-accept').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        toggleAccept(btn.dataset.id);
+      });
+    });
+    body.querySelectorAll('.btn-skip').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        toggleSkip(btn.dataset.id);
+      });
+    });
+
+    updateCounter();
+    document.getElementById('downloadSection').classList.add('visible');
+  }
+
+  function toggleAccept(id){
+    var card = document.getElementById(id);
+    if(acceptedMap[id] === 'accepted'){
+      acceptedMap[id] = undefined;
+      card.className = 'suggestion-card';
+      card.querySelector('.btn-accept').innerHTML = '&#10003; Accept';
+      card.querySelector('.btn-accept').classList.remove('accepted');
+    } else {
+      acceptedMap[id] = 'accepted';
+      card.className = 'suggestion-card accepted';
+      card.querySelector('.btn-accept').innerHTML = '&#10003; Accepted';
+      card.querySelector('.btn-accept').classList.add('accepted');
+      // Remove skip if was skipped
+      card.querySelector('.btn-skip').textContent = 'Skip';
+    }
+    updateCounter();
+  }
+
+  function toggleSkip(id){
+    var card = document.getElementById(id);
+    if(acceptedMap[id] === 'skipped'){
+      acceptedMap[id] = undefined;
+      card.className = 'suggestion-card';
+      card.querySelector('.btn-skip').textContent = 'Skip';
+    } else {
+      acceptedMap[id] = 'skipped';
+      card.className = 'suggestion-card skipped';
+      card.querySelector('.btn-skip').textContent = 'Skipped';
+      // Remove accept if was accepted
+      card.querySelector('.btn-accept').innerHTML = '&#10003; Accept';
+      card.querySelector('.btn-accept').classList.remove('accepted');
+    }
+    updateCounter();
+  }
+
+  function updateCounter(){
+    var accepted = 0;
+    for(var k in acceptedMap){ if(acceptedMap[k]==='accepted') accepted++; }
+    var counter = document.getElementById('suggestionsCounter');
+    counter.textContent = accepted + ' of ' + totalSuggestions + ' suggestions accepted';
+    counter.classList.add('visible');
+  }
+
+  /* ===== GENERATE RESUME ===== */
+  function generateResume(){
+    var resumeText = document.getElementById('resumeText').value;
+    var updatedText = resumeText;
+
+    // Apply accepted changes
+    currentSuggestions.forEach(function(sug){
+      if(acceptedMap[sug.id] === 'accepted'){
+        // Try direct text replacement
+        if(updatedText.indexOf(sug.original) !== -1){
+          updatedText = updatedText.replace(sug.original, sug.suggested);
+        }
+      }
+    });
+
+    // Store in state for download
+    window._generatedResume = updatedText;
+
+    // Save to history
+    saveToHistory(updatedText);
+
+    // Show download buttons active
+    document.getElementById('downloadSection').classList.add('visible');
+
+    // Provide feedback
+    var accepted = 0;
+    for(var k in acceptedMap){ if(acceptedMap[k]==='accepted') accepted++; }
+    alert('Resume updated with ' + accepted + ' changes applied! Use the download buttons to get your tailored resume.');
+  }
+
+  function downloadTxt(){
+    var text = window._generatedResume;
+    if(!text){alert('Please generate the resume first.');return;}
+    var blob = new Blob([text], {type:'text/plain'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+
+    // Name after job
+    var jobTitle = document.getElementById('jobTitleDisplay').textContent || 'tailored';
+    var company = document.getElementById('jobCompanyDisplay').textContent || '';
+    var fileName = 'Resume_' + jobTitle.replace(/[^a-zA-Z0-9]/g,'_') + '_' + company.replace(/[^a-zA-Z0-9]/g,'_') + '.txt';
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function copyToClipboard(){
+    var text = window._generatedResume;
+    if(!text){alert('Please generate the resume first.');return;}
+    navigator.clipboard.writeText(text).then(function(){
+      var btn = document.getElementById('copyBtn');
+      btn.innerHTML = '<span>&#10003;</span> Copied!';
+      setTimeout(function(){ btn.innerHTML = '<span>&#128203;</span> Copy to Clipboard'; }, 2000);
+    });
+  }
+
+  /* ===== HISTORY ===== */
+  function getHistory(){
+    try{ return JSON.parse(localStorage.getItem('bl_resume_history')) || []; }catch(e){return [];}
+  }
+
+  function saveToHistory(text){
+    var history = getHistory();
+    var jobTitle = document.getElementById('jobTitleDisplay').textContent || 'Unknown Job';
+    var company = document.getElementById('jobCompanyDisplay').textContent || 'Unknown Company';
+
+    var acceptedList = [];
+    currentSuggestions.forEach(function(sug){
+      if(acceptedMap[sug.id]==='accepted') acceptedList.push(sug.section + ': ' + sug.suggested.substring(0,60)+'...');
+    });
+
+    history.unshift({
+      id: Date.now(),
+      jobTitle: jobTitle,
+      company: company,
+      date: new Date().toISOString().slice(0,10),
+      acceptedCount: acceptedList.length,
+      totalSuggestions: totalSuggestions,
+      changes: acceptedList,
+      resumeText: text
+    });
+
+    // Keep last 20
+    if(history.length > 20) history = history.slice(0,20);
+    localStorage.setItem('bl_resume_history', JSON.stringify(history));
+    renderHistory();
+  }
+
+  function renderHistory(){
+    var body = document.getElementById('historyBody');
+    var history = getHistory();
+    if(!history.length){
+      body.innerHTML = '<div style="text-align:center;padding:24px;color:#94a3b8;font-size:.85rem">No tailored resumes yet. Analyze and generate your first one!</div>';
+      return;
+    }
+
+    body.innerHTML = '';
+    history.forEach(function(item){
+      var div = document.createElement('div');
+      div.className = 'history-item';
+      div.innerHTML =
+        '<div>' +
+          '<strong>' + esc(item.jobTitle) + '</strong> at <span style="color:#2563eb">' + esc(item.company) + '</span>' +
+          '<div class="hist-meta">' + esc(item.date) + ' &middot; ' + item.acceptedCount + '/' + item.totalSuggestions + ' suggestions applied</div>' +
+        '</div>' +
+        '<div class="hist-actions">' +
+          '<button class="btn-secondary btn-sm hist-download" data-id="'+item.id+'">&#128196; Download</button>' +
+          '<button class="btn-secondary btn-sm hist-delete" data-id="'+item.id+'" style="color:#dc2626;border-color:#fecaca">&#10005;</button>' +
+        '</div>';
+      body.appendChild(div);
+    });
+
+    body.querySelectorAll('.hist-download').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var id = parseInt(btn.dataset.id);
+        var item = history.find(function(h){return h.id===id;});
+        if(item){
+          var blob = new Blob([item.resumeText], {type:'text/plain'});
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = 'Resume_' + item.jobTitle.replace(/[^a-zA-Z0-9]/g,'_') + '.txt';
+          a.click();
+          URL.revokeObjectURL(a.href);
+        }
+      });
+    });
+
+    body.querySelectorAll('.hist-delete').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var id = parseInt(btn.dataset.id);
+        var h = history.filter(function(item){return item.id!==id;});
+        localStorage.setItem('bl_resume_history', JSON.stringify(h));
+        renderHistory();
+      });
+    });
+  }
+
+  /* ===== HELPERS ===== */
+  function esc(s){if(!s)return '';var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+  function showError(id,msg){var el=document.getElementById(id);el.textContent=msg;el.classList.add('visible');}
+  function hideError(id){document.getElementById(id).classList.remove('visible');}
+})();
+</script>
+</body>
+</html>
