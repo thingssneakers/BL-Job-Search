@@ -50,15 +50,10 @@ body{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',R
 .search-box input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
 .search-box svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#94a3b8;width:16px;height:16px}
 .filter-pills{display:flex;gap:6px;flex-wrap:wrap}
-.pill{padding:5px 14px;border-radius:20px;border:1px solid #d1d5db;background:#fff;font-size:.78rem;cursor:pointer;transition:all .15s;font-weight:500;white-space:nowrap}
+.pill{padding:5px 14px;border-radius:20px;border:1px solid #d1d5db;background:#fff;font-size:.72rem;cursor:pointer;transition:all .15s;font-weight:500;white-space:nowrap}
 .pill:hover{background:#f8fafc}
 .pill.active{color:#fff;border-color:transparent}
 .pill[data-cat="all"].active{background:#475569}
-.pill[data-cat="Property Risk & Insurance Tech"].active{background:#2563eb}
-.pill[data-cat="Real Estate Tech / PropTech"].active{background:#7c3aed}
-.pill[data-cat="Construction Tech / Site Documentation"].active{background:#ea580c}
-.pill[data-cat="Geospatial & Mapping"].active{background:#16a34a}
-.pill[data-cat="Digital Twin & BIM"].active{background:#0d9488}
 
 /* Table */
 .table-wrap{max-width:1400px;margin:0 auto;padding:0 24px 40px;overflow-x:auto}
@@ -77,16 +72,17 @@ tr.applied-row:hover{background:#dcfce7 !important}
 
 /* Badges */
 .badge{display:inline-block;padding:2px 10px;border-radius:10px;font-size:.68rem;font-weight:600;color:#fff;white-space:nowrap}
-.badge-property-risk{background:#2563eb}
-.badge-proptech{background:#7c3aed}
-.badge-construction{background:#ea580c}
-.badge-geospatial{background:#16a34a}
-.badge-digital-twin{background:#0d9488}
 .badge-new{background:#fbbf24;color:#78350f;font-size:.6rem;margin-left:6px;padding:1px 6px}
 
 /* Match strength stars */
 .stars{color:#f59e0b;letter-spacing:2px;font-size:.85rem}
 .stars .dim{color:#e2e8f0}
+
+/* Why tooltip */
+.why-tip{position:relative;cursor:help;display:inline-block}
+.why-tip .why-text{display:none;position:absolute;bottom:120%;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:8px 12px;border-radius:8px;font-size:.75rem;width:260px;line-height:1.4;z-index:200;box-shadow:0 4px 12px rgba(0,0,0,.2);text-align:left;font-weight:400}
+.why-tip:hover .why-text{display:block}
+.why-tip .why-text::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:#1e293b}
 
 /* Actions */
 .actions{display:flex;align-items:center;gap:8px;white-space:nowrap}
@@ -191,8 +187,31 @@ tr.applied-row:hover{background:#dcfce7 !important}
 
   /* ===== CONSTANTS ===== */
   var LS_APPLIED='bl_applied', LS_DELETED='bl_deleted', LS_SEEN='bl_seen';
-  var CATS=['Property Risk & Insurance Tech','Real Estate Tech / PropTech','Construction Tech / Site Documentation','Geospatial & Mapping','Digital Twin & BIM'];
-  var BADGE_CLS={'Property Risk & Insurance Tech':'badge-property-risk','Real Estate Tech / PropTech':'badge-proptech','Construction Tech / Site Documentation':'badge-construction','Geospatial & Mapping':'badge-geospatial','Digital Twin & BIM':'badge-digital-twin'};
+
+  var CATS=[
+    'Reality Capture Specialist',
+    'Photogrammetry',
+    'Construction Technology/Documentation',
+    'Geospatial Services',
+    'Surveying & Engineering',
+    'Insurance Drone Inspection',
+    'GIS',
+    'PropTech/Real Estate Tech',
+    'Video Production/Content Creation'
+  ];
+
+  var CAT_COLORS={
+    'Reality Capture Specialist':'#dc2626',
+    'Photogrammetry':'#ea580c',
+    'Construction Technology/Documentation':'#d97706',
+    'Geospatial Services':'#16a34a',
+    'Surveying & Engineering':'#0d9488',
+    'Insurance Drone Inspection':'#0284c7',
+    'GIS':'#2563eb',
+    'PropTech/Real Estate Tech':'#7c3aed',
+    'Video Production/Content Creation':'#c026d3'
+  };
+
   var COLUMNS=[
     {key:'Job Title',label:'Job Title',sortable:true},
     {key:'Company',label:'Company',sortable:true},
@@ -201,10 +220,11 @@ tr.applied-row:hover{background:#dcfce7 !important}
     {key:'Date Posted',label:'Posted',sortable:true},
     {key:'salary',label:'Salary',sortable:false},
     {key:'Match Strength',label:'Match',sortable:true},
+    {key:'why',label:'Why',sortable:false},
     {key:'actions',label:'Actions',sortable:false}
   ];
 
-  var allJobs=[], activeCat='all', searchTerm='', sortCol='Date Posted', sortAsc=false;
+  var allJobs=[], activeCat='all', searchTerm='', sortCol='Match Strength', sortAsc=false;
 
   function jk(j){ return (j['Job Title']||'')+'|||'+(j['Company']||''); }
   function getLS(k){ try{return JSON.parse(localStorage.getItem(k))||{};} catch(e){return {};} }
@@ -213,12 +233,21 @@ tr.applied-row:hover{background:#dcfce7 !important}
 
   function esc(s){ var d=document.createElement('div');d.textContent=s;return d.innerHTML; }
 
+  function matchOrder(s){
+    if(!s) return 0;
+    if(s==='Strong Match'||s==='Strong') return 3;
+    if(s==='Good Match'||s==='Good') return 2;
+    if(s==='Worth Exploring'||s==='Fair') return 1;
+    return 0;
+  }
+
   function starsHTML(strength){
     if(!strength) return '';
-    var n=strength==='Strong'?3:strength==='Good'?2:1;
+    var n=matchOrder(strength);
+    var label=strength;
     var h='';
     for(var i=0;i<3;i++) h+='<span class="'+(i<n?'':'dim')+'">&#9733;</span>';
-    return '<span class="stars" title="'+esc(strength)+'">'+h+'</span>';
+    return '<span class="stars" title="'+esc(label)+'">'+h+'</span>';
   }
 
   function salaryStr(j){
@@ -239,7 +268,7 @@ tr.applied-row:hover{background:#dcfce7 !important}
       if(c.sortable){
         var arrow=document.createElement('span');
         arrow.className='sort-arrow';
-        arrow.textContent= sortCol===c.key?(sortAsc?'\\u25B2':'\\u25BC'):'\\u25BC';
+        arrow.textContent= sortCol===c.key?(sortAsc?'\u25B2':'\u25BC'):'\u25BC';
         th.appendChild(arrow);
         if(sortCol===c.key) th.classList.add('sorted');
         th.addEventListener('click', function(){
@@ -250,7 +279,6 @@ tr.applied-row:hover{background:#dcfce7 !important}
       }
       tr.appendChild(th);
     });
-    // Applied date column
     var thApp=document.createElement('th');
     thApp.textContent='Applied Date';
     tr.appendChild(thApp);
@@ -266,11 +294,18 @@ tr.applied-row:hover{background:#dcfce7 !important}
     allBtn.textContent='All';
     allBtn.addEventListener('click',function(){activeCat='all';render();buildFilters();});
     bar.appendChild(allBtn);
+
+    var catsInData={};
+    allJobs.forEach(function(j){ if(j['Category']) catsInData[j['Category']]=true; });
+
     CATS.forEach(function(cat){
+      if(!catsInData[cat]) return;
       var btn=document.createElement('button');
       btn.className='pill'+(activeCat===cat?' active':'');
       btn.dataset.cat=cat;
       btn.textContent=cat;
+      var color=CAT_COLORS[cat]||'#475569';
+      if(activeCat===cat){btn.style.background=color;btn.style.borderColor=color;btn.style.color='#fff';}
       btn.addEventListener('click',function(){activeCat=cat;render();buildFilters();});
       bar.appendChild(btn);
     });
@@ -296,12 +331,10 @@ tr.applied-row:hover{background:#dcfce7 !important}
       });
     }
 
-    // Sort
     vis.sort(function(a,b){
       var va=a[sortCol]||'', vb=b[sortCol]||'';
       if(sortCol==='Match Strength'){
-        var order={Strong:3,Good:2,Fair:1};
-        va=order[va]||0; vb=order[vb]||0;
+        va=matchOrder(va); vb=matchOrder(vb);
       }
       if(va===vb) return 0;
       if(!va||va==='Not Listed'||va==='N/A') return 1;
@@ -336,7 +369,8 @@ tr.applied-row:hover{background:#dcfce7 !important}
 
       // Category
       var td3=document.createElement('td');
-      td3.innerHTML='<span class="badge '+(BADGE_CLS[j['Category']]||'badge-geospatial')+'">'+esc(j['Category']||'')+'</span>';
+      var catColor=CAT_COLORS[j['Category']]||'#475569';
+      td3.innerHTML='<span class="badge" style="background:'+catColor+'">'+esc(j['Category']||'')+'</span>';
       tr.appendChild(td3);
 
       // Location
@@ -359,23 +393,31 @@ tr.applied-row:hover{background:#dcfce7 !important}
       td7.innerHTML=starsHTML(j['Match Strength']);
       tr.appendChild(td7);
 
-      // Actions
+      // Why This Matches
       var td8=document.createElement('td');
-      td8.innerHTML='<div class="actions">'+
+      var why=j['Why This Matches']||'';
+      if(why){
+        td8.innerHTML='<span class="why-tip">&#128161;<span class="why-text">'+esc(why)+'</span></span>';
+      }
+      tr.appendChild(td8);
+
+      // Actions
+      var td9=document.createElement('td');
+      td9.innerHTML='<div class="actions">'+
         '<input type="checkbox" class="cb-applied" '+(isApplied?'checked':'')+' title="Mark as Applied">'+
         (!isApplied?'<input type="date" class="date-input" style="display:none">':'')+
         '<button class="btn-del" title="Delete">&#10005;</button>'+
         '</div>';
-      tr.appendChild(td8);
-
-      // Applied Date col
-      var td9=document.createElement('td');
-      if(isApplied) td9.innerHTML='<span class="applied-date">'+esc(appliedDate)+'</span>';
       tr.appendChild(td9);
 
+      // Applied Date col
+      var td10=document.createElement('td');
+      if(isApplied) td10.innerHTML='<span class="applied-date">'+esc(appliedDate)+'</span>';
+      tr.appendChild(td10);
+
       // Events
-      var cb=td8.querySelector('.cb-applied');
-      var dateIn=td8.querySelector('.date-input');
+      var cb=td9.querySelector('.cb-applied');
+      var dateIn=td9.querySelector('.date-input');
       cb.addEventListener('change',function(){
         var a=getLS(LS_APPLIED);
         if(cb.checked){
@@ -398,7 +440,7 @@ tr.applied-row:hover{background:#dcfce7 !important}
         }
       });
 
-      td8.querySelector('.btn-del').addEventListener('click',function(){
+      td9.querySelector('.btn-del').addEventListener('click',function(){
         var d=getLSArr(LS_DELETED);
         if(d.indexOf(key)===-1){d.push(key);setLS(LS_DELETED,d);}
         render();
