@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Job Tracker</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f3f4f6;color:#1f2937;line-height:1.5;min-height:100vh}
+.container{max-width:1200px;margin:0 auto;padding:20px}
+header{text-align:center;margin-bottom:28px}
+header h1{font-size:1.75rem;font-weight:700;color:#111827;margin-bottom:4px}
+header p{color:#6b7280;font-size:.875rem}
+
+/* Dashboard */
+.dashboard{display:flex;gap:16px;justify-content:center;margin-bottom:24px;flex-wrap:wrap}
+.stat-card{background:#fff;border-radius:12px;padding:20px 32px;box-shadow:0 1px 3px rgba(0,0,0,.08);text-align:center;min-width:140px}
+.stat-card .number{font-size:2rem;font-weight:700}
+.stat-card .label{font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;margin-top:2px}
+.stat-total .number{color:#2563eb}
+.stat-applied .number{color:#16a34a}
+.stat-pending .number{color:#f59e0b}
+
+/* Controls */
+.controls{margin-bottom:24px;display:flex;flex-direction:column;gap:12px}
+.search-wrap{position:relative}
+.search-wrap input{width:100%;padding:10px 16px 10px 42px;border:1px solid #d1d5db;border-radius:8px;font-size:.9rem;background:#fff;outline:none;transition:border-color .2s}
+.search-wrap input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.search-wrap svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#9ca3af}
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap}
+.filter-btn{padding:6px 14px;border-radius:20px;border:1px solid #d1d5db;background:#fff;font-size:.8rem;cursor:pointer;transition:all .2s;font-weight:500}
+.filter-btn:hover{background:#f9fafb}
+.filter-btn.active{color:#fff;border-color:transparent}
+.filter-btn[data-cat="all"].active{background:#374151;border-color:#374151}
+.filter-btn[data-cat="Property Risk & Insurance Tech"].active{background:#2563eb}
+.filter-btn[data-cat="Real Estate Tech / PropTech"].active{background:#7c3aed}
+.filter-btn[data-cat="Construction Tech / Site Documentation"].active{background:#ea580c}
+.filter-btn[data-cat="Geospatial & Mapping"].active{background:#16a34a}
+.filter-btn[data-cat="Digital Twin & BIM"].active{background:#0d9488}
+
+/* Cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+.card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08);position:relative;transition:box-shadow .2s;display:flex;flex-direction:column}
+.card:hover{box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.card.applied-card{border-left:4px solid #16a34a}
+
+/* Badges */
+.badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:.7rem;font-weight:600;color:#fff;text-transform:uppercase;letter-spacing:.03em}
+.badge-property-risk{background:#2563eb}
+.badge-proptech{background:#7c3aed}
+.badge-construction{background:#ea580c}
+.badge-geospatial{background:#16a34a}
+.badge-digital-twin{background:#0d9488}
+
+.badge-new{background:#fbbf24;color:#78350f;margin-left:6px;font-size:.65rem;padding:2px 8px}
+.badge-applied{background:#dcfce7;color:#166534;margin-left:6px;font-size:.65rem;padding:2px 8px}
+
+.card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px}
+.card-title{font-size:1rem;font-weight:600;color:#111827}
+.card-company{font-size:.875rem;color:#4b5563;margin-bottom:8px}
+
+.card-meta{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.8rem;color:#6b7280;margin-bottom:12px}
+.card-meta span{display:flex;align-items:center;gap:4px}
+
+.card-salary{font-size:.85rem;color:#374151;font-weight:500;margin-bottom:12px}
+
+.card-actions{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:8px;padding-top:12px;border-top:1px solid #f3f4f6}
+.btn-view{display:inline-block;padding:6px 16px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;font-size:.8rem;font-weight:500;transition:background .2s}
+.btn-view:hover{background:#1d4ed8}
+.btn-delete{padding:6px 12px;background:none;border:1px solid #e5e7eb;border-radius:6px;font-size:.8rem;color:#9ca3af;cursor:pointer;transition:all .2s}
+.btn-delete:hover{border-color:#ef4444;color:#ef4444}
+
+.applied-section{display:flex;align-items:center;gap:8px}
+.applied-section label{font-size:.8rem;color:#6b7280;cursor:pointer;display:flex;align-items:center;gap:4px}
+.applied-section input[type="checkbox"]{accent-color:#16a34a;width:16px;height:16px;cursor:pointer}
+.applied-date{font-size:.75rem;color:#16a34a;font-weight:500}
+
+/* Applied banner */
+.applied-banner{background:#dcfce7;color:#166534;text-align:center;font-size:.75rem;font-weight:600;padding:4px;border-radius:8px 8px 0 0;margin:-20px -20px 12px -20px}
+.card.applied-card .applied-banner{display:block}
+
+/* Date input for applied */
+.date-input{padding:4px 8px;border:1px solid #d1d5db;border-radius:4px;font-size:.75rem;max-width:130px}
+
+.empty-state{text-align:center;padding:60px 20px;color:#9ca3af}
+.empty-state p{font-size:1.1rem;margin-bottom:4px}
+
+/* Mobile */
+@media(max-width:600px){
+  .cards{grid-template-columns:1fr}
+  .dashboard{gap:10px}
+  .stat-card{padding:14px 20px;min-width:100px}
+  .stat-card .number{font-size:1.5rem}
+  .container{padding:14px}
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Job Tracker</h1>
+    <p>Personal job search dashboard</p>
+  </header>
+
+  <div class="dashboard">
+    <div class="stat-card stat-total"><div class="number" id="stat-total">0</div><div class="label">Total Jobs</div></div>
+    <div class="stat-card stat-applied"><div class="number" id="stat-applied">0</div><div class="label">Applied</div></div>
+    <div class="stat-card stat-pending"><div class="number" id="stat-pending">0</div><div class="label">Pending</div></div>
+  </div>
+
+  <div class="controls">
+    <div class="search-wrap">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="search" placeholder="Search by title or company...">
+    </div>
+    <div class="filter-bar" id="filter-bar"></div>
+  </div>
+
+  <div class="cards" id="cards"></div>
+  <div class="empty-state" id="empty" style="display:none"><p>No jobs match your filters.</p></div>
+</div>
+
+<script>
+(function(){
+  const LS_APPLIED = 'jobtracker_applied';
+  const LS_DELETED = 'jobtracker_deleted';
+  const LS_SEEN    = 'jobtracker_seen';
+
+  const CATEGORIES = [
+    'Property Risk & Insurance Tech',
+    'Real Estate Tech / PropTech',
+    'Construction Tech / Site Documentation',
+    'Geospatial & Mapping',
+    'Digital Twin & BIM'
+  ];
+
+  const BADGE_CLASS = {
+    'Property Risk & Insurance Tech': 'badge-property-risk',
+    'Real Estate Tech / PropTech': 'badge-proptech',
+    'Construction Tech / Site Documentation': 'badge-construction',
+    'Geospatial & Mapping': 'badge-geospatial',
+    'Digital Twin & BIM': 'badge-digital-twin'
+  };
+
+  function jobKey(j){ return (j["Job Title"]||'')+'|||'+(j["Company"]||''); }
+
+  function getApplied(){
+    try{ return JSON.parse(localStorage.getItem(LS_APPLIED))||{}; }catch(e){ return {}; }
+  }
+  function setApplied(obj){ localStorage.setItem(LS_APPLIED, JSON.stringify(obj)); }
+
+  function getDeleted(){
+    try{ return JSON.parse(localStorage.getItem(LS_DELETED))||[]; }catch(e){ return []; }
+  }
+  function setDeleted(arr){ localStorage.setItem(LS_DELETED, JSON.stringify(arr)); }
+
+  function getSeen(){
+    try{ return JSON.parse(localStorage.getItem(LS_SEEN))||[]; }catch(e){ return []; }
+  }
+  function setSeen(arr){ localStorage.setItem(LS_SEEN, JSON.stringify(arr)); }
+
+  let allJobs = [];
+  let activeFilter = 'all';
+  let searchTerm = '';
+
+  function parseSalary(j){
+    const lo = j["Salary Low End"] || 'Not Listed';
+    const hi = j["Salary High End"] || 'Not Listed';
+    if(lo === 'Not Listed' && hi === 'Not Listed') return 'Salary not listed';
+    if(lo === 'Not Listed') return 'Up to '+hi;
+    if(hi === 'Not Listed') return 'From '+lo;
+    return lo+' \u2013 '+hi;
+  }
+
+  function renderCard(job, isNew){
+    const key = jobKey(job);
+    const applied = getApplied();
+    const isApplied = !!applied[key];
+    const appliedDate = applied[key] || '';
+
+    const card = document.createElement('div');
+    card.className = 'card' + (isApplied ? ' applied-card' : '');
+    card.dataset.key = key;
+    card.dataset.cat = job["Category"] || '';
+
+    let html = '';
+    if(isApplied){
+      html += '<div class="applied-banner">APPLIED'+(appliedDate?' \u2014 '+appliedDate:'')+'</div>';
+    }
+    html += '<div class="card-header"><div>';
+    html += '<div class="card-title">'+esc(job["Job Title"]||'Untitled')+'</div>';
+    html += '<div class="card-company">'+esc(job["Company"]||'')+'</div>';
+    html += '</div><div>';
+    html += '<span class="badge '+( BADGE_CLASS[job["Category"]]||'badge-proptech')+'">'+esc(job["Category"]||'')+'</span>';
+    if(isNew) html += '<span class="badge badge-new">NEW</span>';
+    html += '</div></div>';
+
+    html += '<div class="card-meta">';
+    html += '<span>'+svgPin()+' '+esc(job["Location"]||'N/A')+'</span>';
+    html += '<span>'+svgCal()+' '+esc(job["Date Posted"]||'N/A')+'</span>';
+    html += '<span>'+svgSrc()+' '+esc(job["Source"]||'')+'</span>';
+    html += '</div>';
+
+    html += '<div class="card-salary">'+parseSalary(job)+'</div>';
+
+    html += '<div class="card-actions">';
+    html += '<div class="applied-section">';
+    html += '<label><input type="checkbox" class="cb-applied" '+(isApplied?'checked':'')+'>Applied</label>';
+    if(isApplied){
+      html += '<span class="applied-date">'+esc(appliedDate)+'</span>';
+    } else {
+      html += '<input type="date" class="date-input" style="display:none">';
+    }
+    html += '</div>';
+    html += '<div style="display:flex;gap:6px;align-items:center">';
+    if(job["Direct URL"] && job["Direct URL"]!=='N/A' && job["Direct URL"]!=='Not Listed'){
+      html += '<a href="'+esc(job["Direct URL"])+'" target="_blank" rel="noopener" class="btn-view">View Job</a>';
+    }
+    html += '<button class="btn-delete" title="Remove this job">&#10005;</button>';
+    html += '</div></div>';
+
+    card.innerHTML = html;
+
+    // Applied checkbox
+    const cb = card.querySelector('.cb-applied');
+    const dateInput = card.querySelector('.date-input');
+    cb.addEventListener('change', function(){
+      const a = getApplied();
+      if(cb.checked){
+        if(dateInput){
+          dateInput.style.display = 'inline-block';
+          dateInput.focus();
+          dateInput.addEventListener('change', function(){
+            a[key] = dateInput.value;
+            setApplied(a);
+            render();
+          },{once:true});
+          // Also allow immediate if they skip
+          const fallback = setTimeout(()=>{
+            if(!a[key]||a[key]===true){
+              a[key] = new Date().toISOString().slice(0,10);
+              setApplied(a);
+              render();
+            }
+          }, 10000);
+          dateInput.addEventListener('change', ()=>clearTimeout(fallback),{once:true});
+        } else {
+          a[key] = new Date().toISOString().slice(0,10);
+          setApplied(a);
+          render();
+        }
+      } else {
+        delete a[key];
+        setApplied(a);
+        render();
+      }
+    });
+
+    // Delete
+    card.querySelector('.btn-delete').addEventListener('click', function(){
+      const d = getDeleted();
+      if(!d.includes(key)){ d.push(key); setDeleted(d); }
+      render();
+    });
+
+    return card;
+  }
+
+  function esc(s){ const d=document.createElement('div');d.textContent=s;return d.innerHTML; }
+  function svgPin(){ return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>'; }
+  function svgCal(){ return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'; }
+  function svgSrc(){ return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>'; }
+
+  function render(){
+    const container = document.getElementById('cards');
+    const empty = document.getElementById('empty');
+    container.innerHTML = '';
+
+    const deleted = getDeleted();
+    const applied = getApplied();
+    const seen = getSeen();
+
+    let visible = allJobs.filter(j => !deleted.includes(jobKey(j)));
+
+    if(activeFilter !== 'all'){
+      visible = visible.filter(j => j["Category"] === activeFilter);
+    }
+
+    if(searchTerm){
+      const q = searchTerm.toLowerCase();
+      visible = visible.filter(j =>
+        (j["Job Title"]||'').toLowerCase().includes(q) ||
+        (j["Company"]||'').toLowerCase().includes(q)
+      );
+    }
+
+    // Sort newest first
+    visible.sort((a,b) => {
+      const da = a["Date Posted"] || '';
+      const db = b["Date Posted"] || '';
+      if(da === db) return 0;
+      if(!da || da === 'N/A' || da === 'Not Listed') return 1;
+      if(!db || db === 'N/A' || db === 'Not Listed') return -1;
+      return db.localeCompare(da);
+    });
+
+    if(visible.length === 0){
+      empty.style.display = 'block';
+    } else {
+      empty.style.display = 'none';
+    }
+
+    visible.forEach(j => {
+      const key = jobKey(j);
+      const isNew = !seen.includes(key);
+      container.appendChild(renderCard(j, isNew));
+    });
+
+    // Stats
+    const nonDeleted = allJobs.filter(j => !deleted.includes(jobKey(j)));
+    const appliedCount = nonDeleted.filter(j => !!applied[jobKey(j)]).length;
+    document.getElementById('stat-total').textContent = nonDeleted.length;
+    document.getElementById('stat-applied').textContent = appliedCount;
+    document.getElementById('stat-pending').textContent = nonDeleted.length - appliedCount;
+  }
+
+  function buildFilters(){
+    const bar = document.getElementById('filter-bar');
+    bar.innerHTML = '';
+    const allBtn = document.createElement('button');
+    allBtn.className = 'filter-btn active';
+    allBtn.dataset.cat = 'all';
+    allBtn.textContent = 'All';
+    allBtn.addEventListener('click', ()=>{ activeFilter='all'; setActiveBtn('all'); render(); });
+    bar.appendChild(allBtn);
+
+    CATEGORIES.forEach(cat => {
+      const btn = document.createElement('button');
+      btn.className = 'filter-btn';
+      btn.dataset.cat = cat;
+      btn.textContent = cat;
+      btn.addEventListener('click', ()=>{ activeFilter=cat; setActiveBtn(cat); render(); });
+      bar.appendChild(btn);
+    });
+  }
+
+  function setActiveBtn(cat){
+    document.querySelectorAll('.filter-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.cat === cat);
+    });
+  }
+
+  document.getElementById('search').addEventListener('input', function(e){
+    searchTerm = e.target.value;
+    render();
+  });
+
+  function markAllSeen(){
+    const keys = allJobs.map(jobKey);
+    setSeen(keys);
+  }
+
+  // After first render, mark seen after 5 seconds
+  function scheduleMarkSeen(){
+    setTimeout(markAllSeen, 5000);
+  }
+
+  // Load
+  fetch('jobs.json')
+    .then(r => r.json())
+    .then(data => {
+      allJobs = Array.isArray(data) ? data : [];
+      buildFilters();
+      render();
+      scheduleMarkSeen();
+    })
+    .catch(err => {
+      console.error('Failed to load jobs.json:', err);
+      document.getElementById('empty').style.display = 'block';
+      document.getElementById('empty').querySelector('p').textContent = 'Could not load jobs.json. Make sure the file exists in the same directory.';
+      buildFilters();
+    });
+})();
+</script>
+</body>
+</html>
