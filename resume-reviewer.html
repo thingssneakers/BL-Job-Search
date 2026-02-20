@@ -68,7 +68,6 @@ textarea{resize:vertical;min-height:120px}
 .file-upload{border:2px dashed #d1d5db;border-radius:8px;padding:24px;text-align:center;cursor:pointer;transition:all .2s;background:#fafbfc}
 .file-upload:hover{border-color:#2563eb;background:#eff6ff}
 .file-upload.has-file{border-color:#16a34a;background:#f0fdf4}
-.file-upload input{display:none}
 .file-upload .upload-icon{font-size:2rem;margin-bottom:8px;display:block}
 .file-upload .upload-text{font-size:.85rem;color:#64748b}
 .file-upload .file-name{font-size:.85rem;color:#16a34a;font-weight:600;margin-top:4px}
@@ -189,8 +188,8 @@ textarea{resize:vertical;min-height:120px}
 
       <div class="panel">
         <h2>&#128206; Upload Your Resume</h2>
+        <input type="file" id="resumeFile" accept=".pdf,.docx" style="display:none">
         <div class="file-upload" id="fileUpload">
-          <input type="file" id="resumeFile" accept=".pdf,.docx">
           <span class="upload-icon">&#128196;</span>
           <div class="upload-text">Click to upload your resume (.pdf or .docx)</div>
           <div class="file-name" id="fileName" style="display:none"></div>
@@ -367,14 +366,21 @@ textarea{resize:vertical;min-height:120px}
     // File upload
     var fileUpload = document.getElementById('fileUpload');
     var fileInput = document.getElementById('resumeFile');
-    fileUpload.addEventListener('click', function(){ fileInput.click(); });
-    fileInput.addEventListener('change', handleFileUpload);
+    fileUpload.addEventListener('click', function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      fileInput.click();
+    });
+    fileInput.addEventListener('change', function(){
+      handleFileUpload();
+    });
 
     // Drag and drop
-    fileUpload.addEventListener('dragover', function(e){ e.preventDefault(); fileUpload.style.borderColor='#2563eb'; });
+    fileUpload.addEventListener('dragover', function(e){ e.preventDefault(); e.stopPropagation(); fileUpload.style.borderColor='#2563eb'; });
     fileUpload.addEventListener('dragleave', function(){ fileUpload.style.borderColor='#d1d5db'; });
     fileUpload.addEventListener('drop', function(e){
       e.preventDefault();
+      e.stopPropagation();
       fileUpload.style.borderColor='#d1d5db';
       if(e.dataTransfer.files.length){ fileInput.files = e.dataTransfer.files; handleFileUpload(); }
     });
