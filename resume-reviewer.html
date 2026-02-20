@@ -4,8 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Resume Reviewer - BL Job Search</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" onerror="window._pdfFail=true"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js" onerror="window._pdfWorkerFail=true"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" onerror="window._mammothFail=true"></script>
+<script>
+// Set PDF.js worker path globally at page load
+document.addEventListener('DOMContentLoaded', function(){
+  if(typeof pdfjsLib !== 'undefined'){
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+});
+</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f2f5;color:#1e293b;line-height:1.6;min-height:100vh}
@@ -187,8 +196,12 @@ textarea{resize:vertical;min-height:120px}
           <div class="file-name" id="fileName" style="display:none"></div>
         </div>
         <div class="error-msg" id="uploadError"></div>
-        <h3>Your Resume Text</h3>
-        <textarea id="resumeText" placeholder="Resume text will appear here after upload, or paste it manually..." rows="12"></textarea>
+        <div id="uploadProgress" style="display:none;padding:12px 16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;margin:12px 0;font-size:.85rem;color:#1e40af;font-weight:500;display:none;align-items:center;gap:10px">
+          <div style="width:18px;height:18px;border:3px solid #bfdbfe;border-top-color:#2563eb;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0"></div>
+          <span id="uploadProgressText">Extracting text from file...</span>
+        </div>
+        <h3>Resume Text <span style="font-weight:400;font-size:.75rem;color:#64748b">(if upload fails, paste your resume text here instead)</span></h3>
+        <textarea id="resumeText" placeholder="Resume text will appear here after a successful upload. If the upload doesn't work, paste your full resume text directly into this box as a backup." rows="12"></textarea>
       </div>
 
       <div class="panel">
@@ -397,6 +410,15 @@ textarea{resize:vertical;min-height:120px}
   }
 
   /* ===== FILE HANDLING ===== */
+  function showUploadProgress(msg){
+    var el = document.getElementById('uploadProgress');
+    el.style.display = 'flex';
+    document.getElementById('uploadProgressText').textContent = msg || 'Extracting text from file...';
+  }
+  function hideUploadProgress(){
+    document.getElementById('uploadProgress').style.display = 'none';
+  }
+
   function handleFileUpload(){
     var file = document.getElementById('resumeFile').files[0];
     if(!file) return;
@@ -404,6 +426,7 @@ textarea{resize:vertical;min-height:120px}
     var ext = file.name.split('.').pop().toLowerCase();
     var errorEl = document.getElementById('uploadError');
     errorEl.classList.remove('visible');
+    hideUploadProgress();
 
     if(ext !== 'pdf' && ext !== 'docx'){
       errorEl.textContent = 'Unsupported file format. Please upload a .pdf or .docx file.';
@@ -416,55 +439,136 @@ textarea{resize:vertical;min-height:120px}
     document.getElementById('fileName').style.display = 'block';
     document.getElementById('fileUpload').classList.add('has-file');
 
-    if(ext === 'pdf') extractPDF(file);
-    else if(ext === 'docx') extractDOCX(file);
+    if(ext === 'pdf'){
+      if(typeof pdfjsLib === 'undefined' || window._pdfFail){
+        errorEl.textContent = 'PDF library failed to load. Please paste your resume text in the box below instead.';
+        errorEl.classList.add('visible');
+        return;
+      }
+      extractPDF(file);
+    } else if(ext === 'docx'){
+      if(typeof mammoth === 'undefined' || window._mammothFail){
+        errorEl.textContent = 'DOCX library failed to load. Please paste your resume text in the box below instead.';
+        errorEl.classList.add('visible');
+        return;
+      }
+      extractDOCX(file);
+    }
   }
 
   function extractPDF(file){
+    showUploadProgress('Reading PDF file...');
+    var errorEl = document.getElementById('uploadError');
     var reader = new FileReader();
+    reader.onerror = function(){
+      hideUploadProgress();
+      errorEl.textContent = 'Failed to read the file. Please paste your resume text in the box below instead.';
+      errorEl.classList.add('visible');
+    };
     reader.onload = function(){
-      var typedArray = new Uint8Array(this.result);
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-      pdfjsLib.getDocument(typedArray).promise.then(function(pdf){
-        var text = '';
-        var pages = [];
-        for(var i=1; i<=pdf.numPages; i++) pages.push(i);
-
-        function getPage(idx){
-          if(idx >= pages.length){
-            document.getElementById('resumeText').value = text.trim();
-            checkReady();
-            return;
-          }
-          pdf.getPage(pages[idx]).then(function(page){
-            page.getTextContent().then(function(content){
-              content.items.forEach(function(item){ text += item.str + ' '; });
-              text += '\n';
-              getPage(idx+1);
-            });
-          });
+      try {
+        var typedArray = new Uint8Array(this.result);
+        // Ensure worker is set
+        if(pdfjsLib.GlobalWorkerOptions && !pdfjsLib.GlobalWorkerOptions.workerSrc){
+          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
         }
-        getPage(0);
-      }).catch(function(err){
-        var errorEl = document.getElementById('uploadError');
-        errorEl.textContent = 'Failed to read PDF: ' + err.message;
+        showUploadProgress('Extracting text from PDF...');
+        var loadingTask = pdfjsLib.getDocument({data: typedArray});
+        loadingTask.promise.then(function(pdf){
+          var numPages = pdf.numPages;
+          var text = '';
+          var pagesProcessed = 0;
+
+          function processPage(pageNum){
+            pdf.getPage(pageNum).then(function(page){
+              return page.getTextContent();
+            }).then(function(content){
+              var pageText = '';
+              var lastY = null;
+              content.items.forEach(function(item){
+                // Insert newline when Y position changes (new line in PDF)
+                if(lastY !== null && Math.abs(item.transform[5] - lastY) > 2){
+                  pageText += '\n';
+                }
+                pageText += item.str;
+                lastY = item.transform[5];
+              });
+              text += pageText + '\n\n';
+              pagesProcessed++;
+              showUploadProgress('Extracting text... page ' + pagesProcessed + ' of ' + numPages);
+
+              if(pagesProcessed === numPages){
+                hideUploadProgress();
+                var cleaned = text.replace(/\n{3,}/g, '\n\n').trim();
+                if(!cleaned){
+                  errorEl.textContent = 'PDF appears to be image-based (no extractable text). Please paste your resume text in the box below instead.';
+                  errorEl.classList.add('visible');
+                  return;
+                }
+                document.getElementById('resumeText').value = cleaned;
+                checkReady();
+              } else {
+                processPage(pageNum + 1);
+              }
+            }).catch(function(err){
+              hideUploadProgress();
+              errorEl.textContent = 'Error reading page ' + pageNum + ': ' + err.message + '. Please paste your resume text below instead.';
+              errorEl.classList.add('visible');
+            });
+          }
+
+          if(numPages > 0) processPage(1);
+          else {
+            hideUploadProgress();
+            errorEl.textContent = 'PDF has no pages. Please paste your resume text below instead.';
+            errorEl.classList.add('visible');
+          }
+        }).catch(function(err){
+          hideUploadProgress();
+          errorEl.textContent = 'Failed to parse PDF: ' + (err.message || 'Unknown error') + '. Please paste your resume text in the box below instead.';
+          errorEl.classList.add('visible');
+        });
+      } catch(e) {
+        hideUploadProgress();
+        errorEl.textContent = 'PDF processing error: ' + e.message + '. Please paste your resume text in the box below instead.';
         errorEl.classList.add('visible');
-      });
+      }
     };
     reader.readAsArrayBuffer(file);
   }
 
   function extractDOCX(file){
+    showUploadProgress('Reading DOCX file...');
+    var errorEl = document.getElementById('uploadError');
     var reader = new FileReader();
+    reader.onerror = function(){
+      hideUploadProgress();
+      errorEl.textContent = 'Failed to read the file. Please paste your resume text in the box below instead.';
+      errorEl.classList.add('visible');
+    };
     reader.onload = function(){
-      mammoth.extractRawText({arrayBuffer: this.result}).then(function(result){
-        document.getElementById('resumeText').value = result.value.trim();
-        checkReady();
-      }).catch(function(err){
-        var errorEl = document.getElementById('uploadError');
-        errorEl.textContent = 'Failed to read DOCX: ' + err.message;
+      try {
+        showUploadProgress('Extracting text from DOCX...');
+        mammoth.extractRawText({arrayBuffer: this.result}).then(function(result){
+          hideUploadProgress();
+          var text = (result.value || '').trim();
+          if(!text){
+            errorEl.textContent = 'No text found in DOCX. Please paste your resume text in the box below instead.';
+            errorEl.classList.add('visible');
+            return;
+          }
+          document.getElementById('resumeText').value = text;
+          checkReady();
+        }).catch(function(err){
+          hideUploadProgress();
+          errorEl.textContent = 'Failed to read DOCX: ' + (err.message || 'Unknown error') + '. Please paste your resume text in the box below instead.';
+          errorEl.classList.add('visible');
+        });
+      } catch(e) {
+        hideUploadProgress();
+        errorEl.textContent = 'DOCX processing error: ' + e.message + '. Please paste your resume text in the box below instead.';
         errorEl.classList.add('visible');
-      });
+      }
     };
     reader.readAsArrayBuffer(file);
   }
@@ -526,7 +630,7 @@ textarea{resize:vertical;min-height:120px}
         'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5-20250929',
+        model: 'claude-sonnet-4-6',
         max_tokens: 4000,
         system: systemPrompt,
         messages: [{role:'user', content: userMessage}]
